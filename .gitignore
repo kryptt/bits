@@ -1,2 +1,5 @@
+/.js
+/.jvm
+**/target
 *.class
 *.log
