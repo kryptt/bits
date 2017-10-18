@@ -1,6 +1,7 @@
 package br
 package bits
 
+import scala.language.implicitConversions
 import scala.concurrent.ExecutionContext
 
 import cats._
@@ -28,11 +29,16 @@ class Block[Model, View]
 
   val piece = new Piece(initialModel, update, view)(topic.subscribe(maxQueue))
 
-  val views = piece.views
+  def views = piece.views
 
   def publish[A](a: A) = topic.publish1(a).unsafeRunAsync {
     case Left(e) => throw e
     case Right(_) => ()
   }
 
+}
+
+object Block {
+  implicit def piece[Model, View](block: Block[Model, View]): Piece[Model, View] = block.piece
+  implicit def bit[View](block: Block[_, View]): Bit[View] = block.piece
 }

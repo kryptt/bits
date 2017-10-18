@@ -1,6 +1,7 @@
 package br
 package bits
 
+import scala.language.implicitConversions
 import scala.concurrent.ExecutionContext
 
 import cats._
@@ -14,7 +15,7 @@ import fs2._
   *  1. <b>view</b> <i>~></i> The method that 'renders'.
   *  1. <b>update</b> <i>~></i> A partial function from events to update functions. <code>events -> model -> IO[model]</code>
   *
-  * We believe the abstraction (restriction) of OOP is desired for program layout.
+  * It is very simple to construct a new piece:
   *  @example
   *    {{{
   *    val counter = new Piece[Int, String] (
@@ -24,6 +25,17 @@ import fs2._
   *      view = (cnt => s"You are viewing a Counter.\\nCount is: \$cnt")
   *      )(events)
   *    }}}
+  *
+  * @example
+  *   {{{
+  *   val hello = Piece.const(IO("Hello world!"))
+  *   }}}
+  *
+  * Composing bits can be straight forward as well:
+  * @example
+  *   {{{
+  *   val both = Bit.fuse(hello, counter)(_ + ".\n" + _)
+  *   }}}
   *
   * @tparam Model The piece of data held.
   * @tparam View The output generated as the model changes.
@@ -44,7 +56,7 @@ class Piece[Model, View]
 
   /** Resulting stream of views as the incoming events stream drives
     the rendering of internal model changes. */
-  val views: Stream[IO, View] = updates.changes.evalMap(view)
+  def views: Stream[IO, View] = updates.changes.evalMap(view)
 
   private def updates: Stream[IO, Model] = Stream.force {
     initialModel.flatMap(async.refOf[IO, Model]).map {
@@ -77,4 +89,7 @@ object Piece {
       Stream.constant(()))(
       Eq.allEqual[Unit], ec)
 
+  implicit def bit[View](piece: Piece[_, View]) = new Bit[View] {
+    def views = piece.views
+  }
 }
